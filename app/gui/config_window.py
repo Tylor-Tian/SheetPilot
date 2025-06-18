@@ -21,16 +21,18 @@ class CleaningThread(QThread):
     completed = pyqtSignal(pd.DataFrame, object)
     error = pyqtSignal(str)
     
-    def __init__(self, df, steps):
+    def __init__(self, df, steps, current_user=None): # Added current_user
         super().__init__()
         self.df = df
         self.steps = steps
+        self.current_user = current_user # Store current_user
         
     def run(self):
         """Run the cleaning pipeline."""
         try:
             orchestrator = Orchestrator()
-            cleaned_df, report = orchestrator.run_pipeline(self.df, self.steps)
+            # Pass current_user to run_pipeline
+            cleaned_df, report = orchestrator.run_pipeline(self.df, self.steps, current_user=self.current_user)
             self.completed.emit(cleaned_df, report)
         except Exception as e:
             self.error.emit(str(e))
@@ -41,8 +43,9 @@ class ConfigWindow(QWidget):
     
     cleaning_completed = pyqtSignal(pd.DataFrame, object)
     
-    def __init__(self):
+    def __init__(self, current_user: dict = None): # Added current_user
         super().__init__()
+        self.current_user = current_user # Store current_user
         self.df = None
         self.registry = ModuleRegistry()
         self.init_ui()
@@ -340,8 +343,8 @@ class ConfigWindow(QWidget):
         self.progress_bar.setVisible(True)
         self.progress_bar.setRange(0, 0)  # Indeterminate
         
-        # Run in thread
-        self.cleaning_thread = CleaningThread(self.df, steps)
+        # Run in thread, passing current_user to the thread
+        self.cleaning_thread = CleaningThread(self.df, steps, current_user=self.current_user)
         self.cleaning_thread.completed.connect(self.on_cleaning_completed)
         self.cleaning_thread.error.connect(self.on_cleaning_error)
         self.cleaning_thread.start()

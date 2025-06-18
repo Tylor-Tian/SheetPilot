@@ -7,11 +7,13 @@ from typing import Optional
 
 def parse_file(
     path: str, 
-    file_format: Optional[str] = None, 
+    file_format: Optional[str] = None,
+    current_user: Optional[dict] = None, # Added for orchestrator compatibility
     **kwargs
 ) -> pd.DataFrame:
     """
     Parse a file into a pandas DataFrame.
+    'current_user' is accepted for compatibility but not used by this module.
     
     Args:
         path: Path to the file

@@ -14,10 +14,12 @@ def detect_outliers(
     method: str = "iqr",
     threshold: Optional[float] = None,
     action: str = "remove",
+    current_user: Optional[dict] = None, # Added for orchestrator compatibility
     **kwargs
 ) -> pd.DataFrame:
     """
     Detect and handle outliers in numeric columns.
+    'current_user' is accepted for compatibility but not used by this module.
     
     Args:
         df: Input DataFrame
