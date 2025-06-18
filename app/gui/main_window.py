@@ -10,20 +10,33 @@ import pandas as pd
 from .import_window import ImportWindow
 from .config_window import ConfigWindow
 from .report_window import ReportWindow
+from .user_management_dialog import UserManagementDialog # Import the new dialog
+
+# RBAC import
+from app.core.user_management import has_permission
+# Audit logging import
+from app.core.audit_logger import log_audit_event, ACTION_ADMIN_ACCESS_USER_MANAGEMENT
 
 
 class MainWindow(QMainWindow):
     """Main application window with navigation."""
     
-    def __init__(self):
+    def __init__(self, current_user: dict = None): # Add current_user parameter
         super().__init__()
+        self.current_user = current_user
         self.df = None
         self.cleaned_df = None
         self.init_ui()
         
     def init_ui(self):
         """Initialize the user interface."""
-        self.setWindowTitle("SheetPilot")
+        base_title = "SheetPilot"
+        if self.current_user:
+            user_info = f"{self.current_user.get('username', 'Unknown')} ({self.current_user.get('role', 'user')})"
+            self.setWindowTitle(f"{base_title} - Logged in as: {user_info}")
+        else:
+            self.setWindowTitle(base_title) # Fallback if no user info
+
         self.setGeometry(100, 100, 1000, 700)
         
         # Create central widget and layout
@@ -37,7 +50,8 @@ class MainWindow(QMainWindow):
         
         # Create windows
         self.import_window = ImportWindow()
-        self.config_window = ConfigWindow()
+        # Pass current_user to ConfigWindow constructor
+        self.config_window = ConfigWindow(current_user=self.current_user)
         self.report_window = ReportWindow()
         
         # Add windows to stack
@@ -51,7 +65,7 @@ class MainWindow(QMainWindow):
         
         # Create menu bar
         self.create_menu_bar()
-        
+
         # Create status bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
@@ -74,6 +88,20 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
         
+        # File menu -> User Management Action (placeholder)
+        self.user_management_action = QAction("User Management", self)
+        self.user_management_action.triggered.connect(self.open_user_management_dialog)
+        file_menu.addAction(self.user_management_action)
+
+        # Set initial enabled state based on permissions
+        if self.current_user and \
+           has_permission(self.current_user.get('role'), 'manage_users'):
+            self.user_management_action.setEnabled(True)
+        else:
+            self.user_management_action.setEnabled(False)
+            self.user_management_action.setToolTip("Requires admin privileges")
+
+
         # View menu
         view_menu = menubar.addMenu("View")
         
@@ -122,3 +150,26 @@ class MainWindow(QMainWindow):
         self.report_window.set_results(df, report)
         self.show_report_window()
         self.status_bar.showMessage("Cleaning completed")
+
+    def open_user_management_dialog(self):
+        """Opens the User Management dialog if the current user has permission."""
+        if self.current_user and has_permission(self.current_user.get('role'), 'manage_users'):
+            log_audit_event(
+                action_type=ACTION_ADMIN_ACCESS_USER_MANAGEMENT,
+                outcome='SUCCESS',
+                user_id=self.current_user.get('id'),
+                username=self.current_user.get('username'),
+                details={'message': 'Admin accessed User Management Dialog.'}
+            )
+            # Pass the full current_user object to the dialog
+            dialog = UserManagementDialog(current_admin_user=self.current_user, parent=self)
+            dialog.exec_() # Show the dialog modally
+        else:
+            # This check is technically redundant if the action is disabled,
+            # but serves as a safeguard or if called from elsewhere.
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Permission Denied",
+                "You do not have sufficient permissions to manage users."
+            )
+            self.status_bar.showMessage("User Management: Permission Denied.")

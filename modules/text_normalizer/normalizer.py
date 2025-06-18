@@ -13,10 +13,12 @@ def normalize_text(
     lowercase: bool = True,
     remove_punct: bool = True,
     remove_stopwords: bool = False,
-    slang_dict: Optional[Dict[str, str]] = None
+    slang_dict: Optional[Dict[str, str]] = None,
+    current_user: Optional[dict] = None # Added for orchestrator compatibility
 ) -> pd.DataFrame:
     """
     Normalize text in specified columns.
+    'current_user' is accepted for compatibility but not used by this module.
     
     Args:
         df: Input DataFrame

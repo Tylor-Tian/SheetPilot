@@ -11,10 +11,12 @@ def impute_missing(
     df: pd.DataFrame,
     columns: Optional[List[str]] = None,
     method: str = "mean",
+    current_user: Optional[dict] = None, # Added for orchestrator compatibility
     **kwargs
 ) -> pd.DataFrame:
     """
     Impute missing values in specified columns.
+    'current_user' is accepted for compatibility but not used by this module.
     
     Args:
         df: Input DataFrame
@@ -48,18 +50,18 @@ def impute_missing(
     if method == "mean":
         for col in columns:
             if pd.api.types.is_numeric_dtype(result_df[col]):
-                result_df[col].fillna(result_df[col].mean(), inplace=True)
+                result_df[col] = result_df[col].fillna(result_df[col].mean())
                 
     elif method == "median":
         for col in columns:
             if pd.api.types.is_numeric_dtype(result_df[col]):
-                result_df[col].fillna(result_df[col].median(), inplace=True)
+                result_df[col] = result_df[col].fillna(result_df[col].median())
                 
     elif method == "mode":
         for col in columns:
             mode_val = result_df[col].mode()
             if len(mode_val) > 0:
-                result_df[col].fillna(mode_val[0], inplace=True)
+                result_df[col] = result_df[col].fillna(mode_val[0])
                 
     elif method == "knn":
         # KNN imputation for numeric columns
@@ -76,7 +78,7 @@ def impute_missing(
     elif method == "constant":
         fill_value = kwargs.get("fill_value", 0)
         for col in columns:
-            result_df[col].fillna(fill_value, inplace=True)
+            result_df[col] = result_df[col].fillna(fill_value)
             
     else:
         raise ValueError(f"Unknown imputation method: {method}")
